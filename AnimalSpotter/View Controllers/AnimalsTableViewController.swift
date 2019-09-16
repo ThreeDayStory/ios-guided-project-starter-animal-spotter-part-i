@@ -13,6 +13,8 @@ class AnimalsTableViewController: UITableViewController {
     // MARK: - Properties
     
     private var animalNames: [String] = []
+    
+    let apiController = APIController()
 
     // MARK: - View Lifecycle
     
@@ -23,7 +25,10 @@ class AnimalsTableViewController: UITableViewController {
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         
-        // transition to login view if conditions require
+        // transition to login view if conditions require (if the user is logged out or the token is expired)
+        if apiController.bearer == nil {
+            performSegue(withIdentifier: "LoginViewModalSegue", sender: self)
+        } 
     }
 
     // MARK: - Table view data source
@@ -45,6 +50,15 @@ class AnimalsTableViewController: UITableViewController {
     
     @IBAction func getAnimals(_ sender: UIBarButtonItem) {
         // fetch all animals from API
+        apiController.fetchAllAnimalNames { result in
+        // optional try does not account for any error cases - just swallows errors -- can use a switch to handle different errors after extracting them
+            if let names = try? result.get() {
+                DispatchQueue.main.async {
+                    self.animalNames = names
+                    self.tableView.reloadData()
+                }
+            }
+        }
     }
     
     // MARK: - Navigation
@@ -53,6 +67,15 @@ class AnimalsTableViewController: UITableViewController {
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if segue.identifier == "LoginViewModalSegue" {
             // inject dependencies
+            if let loginVC = segue.destination as? LoginViewController {
+                loginVC.apiController = apiController
+            }
+        } else if segue.identifier == "ShowDetailViewSegue" {
+            if let detailVC = segue.destination as? DetailViewController,
+                let indexPath = tableView.indexPathForSelectedRow {
+                detailVC.animalName = animalNames[indexPath.row]
+                detailVC.apiController = apiController
+            }
         }
     }
 }
